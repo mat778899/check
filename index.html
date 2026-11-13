@@ -15,6 +15,7 @@
     .intro { max-width:470px; margin:8px 0 0; color:var(--muted); font-size:14px; line-height:1.5; }
     .privacy { flex:none; display:flex; gap:9px; align-items:center; padding:9px 12px; border:1px solid var(--line); border-radius:999px; color:#4a5a6c; font-size:12px; background:var(--panel); }
     .privacy::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 10px rgba(22,163,74,.4); }
+    .privacy .privacy-short { display:none; }
     .header-actions { flex:none; display:flex; gap:9px; align-items:center; }
     .export-btn { min-height:38px; padding:0 16px; border:1px solid var(--line); border-radius:999px; background:var(--panel); color:#4a5a6c; font-size:12px; font-weight:650; cursor:pointer; }
     .export-btn:hover { border-color:var(--cyan); color:var(--cyan); }
@@ -87,6 +88,7 @@
       .menu-item.active { background:var(--soft); }
       .menu-item .menu-mark { display:grid; place-items:center; width:28px; height:28px; border-radius:7px; font-size:11px; font-weight:800; color:#fff; flex:none; }
       .menu-backdrop.open { display:block; position:fixed; inset:0; z-index:90; background:transparent; }
+      .privacy .privacy-long { display:none; } .privacy .privacy-short { display:inline; }
       main{display:flex;flex-direction:column;gap:0;} .card{display:none;} .card.active{display:block;animation:fade .18s ease;} @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
     }
     @media (max-width:480px) { .shell{padding-top:22px;} .card{padding:18px;} .buttons{grid-template-columns:1fr 1fr 1fr;} }
@@ -97,7 +99,7 @@
     <header>
       <div><p class="eyebrow">Credential Console</p><h1>API key health check</h1><p class="intro">Validate access and inspect available models across your AI providers.</p></div>
       <div class="header-actions">
-        <div class="privacy">Browser-only · keys stored locally</div>
+        <div class="privacy"><span class="privacy-long">Browser-only · keys stored locally</span><span class="privacy-short">Keys</span></div>
         <button class="export-btn" id="exportBtn" title="Download saved keys as JSON">Export</button>
         <button class="export-btn" id="importBtn" title="Import keys from a JSON file">Import</button>
         <input type="file" id="importFile" accept="application/json,.json" hidden>
