@@ -75,7 +75,9 @@
     .menu-wrap { display:none; }
     .menu-backdrop { display:none; }
     @media (max-width:900px) {
-      .shell{width:min(600px,calc(100% - 28px));} header{align-items:flex-start;flex-direction:column;} main{grid-template-columns:1fr;} .header-actions{align-self:flex-start;}
+      html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
+      body{position:fixed;inset:0;width:100%;}
+      .shell{width:min(600px,calc(100% - 28px));height:100%;overflow-y:auto;overscroll-behavior:contain;} header{align-items:flex-start;flex-direction:column;} main{grid-template-columns:1fr;} .header-actions{align-self:flex-start;}
       .menu-wrap { position:relative; display:block; flex:none; }
       .hamburger { display:flex; align-items:center; justify-content:center; width:40px; height:40px; flex:none; border:1px solid var(--line); border-radius:10px; background:var(--panel); cursor:pointer; color:#4a5a6c; transition:border-color .15s,color .15s; }
       .hamburger:hover { border-color:var(--cyan); color:var(--cyan); }
