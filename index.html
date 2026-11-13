@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Credential Console</title>
+  <style>
+    :root { color-scheme: light; --bg:#eef2f7; --panel:#ffffff; --line:#d6deea; --muted:#6b7c8f; --text:#1a2733; --cyan:#0ea5a0; --good:#16a34a; --bad:#e23856; --input-bg:#f8fafc; --input-border:#c5d1e0; --soft:#f1f5f9; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% -20%,#dbe7f5 0,transparent 46%),var(--bg); color:var(--text); font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    .shell { width:min(1320px,calc(100% - 40px)); margin:auto; padding:34px 0 28px; }
+    header { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:24px; }
+    .eyebrow { margin:0 0 8px; color:var(--cyan); font:700 11px/1.2 ui-monospace,SFMono-Regular,monospace; letter-spacing:.18em; text-transform:uppercase; }
+    h1 { margin:0; font-size:clamp(26px,3vw,38px); letter-spacing:-.035em; }
+    .intro { max-width:470px; margin:8px 0 0; color:var(--muted); font-size:14px; line-height:1.5; }
+    .privacy { flex:none; display:flex; gap:9px; align-items:center; padding:9px 12px; border:1px solid var(--line); border-radius:999px; color:#4a5a6c; font-size:12px; background:var(--panel); }
+    .privacy::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 10px rgba(22,163,74,.4); }
+    .header-actions { flex:none; display:flex; gap:9px; align-items:center; }
+    .export-btn { min-height:38px; padding:0 16px; border:1px solid var(--line); border-radius:999px; background:var(--panel); color:#4a5a6c; font-size:12px; font-weight:650; cursor:pointer; }
+    .export-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+    main { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .card { position:relative; min-width:0; padding:22px; border:1px solid var(--line); border-radius:16px; background:var(--panel); box-shadow:0 6px 24px rgba(30,50,80,.07); overflow:hidden; }
+    .card::before { content:""; position:absolute; inset:0 0 auto; height:3px; background:var(--accent); }
+    .provider { display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+    .mark { display:grid; place-items:center; width:38px; height:38px; border:1px solid color-mix(in srgb,var(--accent) 45%,transparent); border-radius:10px; color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,transparent); font-weight:800; }
+    h2 { margin:0; font-size:17px; }
+    .provider p { margin:3px 0 0; color:var(--muted); font-size:11px; }
+    label { display:block; margin:0 0 7px; color:#3a4a5c; font-size:12px; font-weight:650; }
+    input,select { width:100%; height:42px; border:1px solid var(--input-border); border-radius:9px; outline:none; background:var(--input-bg); color:var(--text); font:13px ui-monospace,SFMono-Regular,Consolas,monospace; }
+    input { padding:0 12px; }
+    select { padding:0 10px; text-overflow:ellipsis; }
+    input::placeholder { color:#9aa8ba; }
+    input:focus,select:focus,button:focus-visible { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent); }
+    .buttons { display:grid; grid-template-columns:1fr auto auto; gap:8px; margin-top:11px; }
+    button { min-height:40px; padding:0 18px; border:1px solid transparent; border-radius:9px; cursor:pointer; background:var(--accent); color:#fff; font-weight:750; }
+    button.secondary { border-color:var(--input-border); background:transparent; color:#4a5a6c; font-weight:600; }
+    button.tertiary { border-color:color-mix(in srgb,var(--accent) 40%,transparent); background:color-mix(in srgb,var(--accent) 8%,transparent); color:var(--accent); font-weight:650; font-size:12px; }
+    button:hover { filter:brightness(1.06); }
+    button:disabled { opacity:.5; cursor:wait; }
+    .error { display:none; min-height:38px; margin-top:12px; padding:10px 11px; border:1px solid #f0b4be; border-radius:8px; background:#fdeef1; color:#c11d3a; font-size:12px; }
+    .error.show { display:block; }
+    .results { display:none; margin-top:16px; padding-top:15px; border-top:1px solid var(--line); }
+    .results.show { display:block; }
+    .result-row { display:flex; align-items:center; justify-content:space-between; min-height:30px; gap:12px; }
+    .result-label { color:var(--muted); font-size:12px; }
+    .result-value { font-size:13px; font-weight:750; }
+    .status-valid { color:var(--good); }
+    .status-invalid { color:var(--bad); }
+    .model-row { display:block; margin-top:10px; }
+    .model-row .result-label { display:block; margin-bottom:7px; }
+    select:disabled { opacity:.5; }
+    /* Saved keys panel */
+    .saved-keys { margin-top:16px; padding-top:15px; border-top:1px solid var(--line); }
+    .saved-keys-list { display:flex; flex-direction:column; gap:8px; }
+    .saved-key-row { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--soft); }
+    .saved-key-row button { min-height:30px; padding:0 10px; font-size:11px; border-radius:6px; border:1px solid transparent; cursor:pointer; font-weight:650; }
+    .saved-key-row .use-btn { background:var(--accent); border-color:transparent; color:#fff; }
+    .saved-key-row .use-btn:hover { filter:brightness(1.06); }
+    .saved-key-row .copy-btn { background:transparent; border-color:var(--input-border); color:#4a5a6c; }
+    .saved-key-row .copy-btn:hover { background:var(--panel); }
+    .saved-key-row .del-btn { background:transparent; border-color:#e0b8be; color:var(--bad); }
+    .saved-key-row .del-btn:hover { background:#fdf0f2; }
+    .saved-key-row .key-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; overflow:hidden; }
+    .saved-key-row .key-name { font:600 12px/1.3 ui-sans-serif,-apple-system,sans-serif; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .saved-key-row .key-trunc { font:11px ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .name-field { margin-top:10px; }
+    .name-field label { margin-bottom:5px; font-size:11px; color:var(--muted); font-weight:600; }
+    .name-field input { height:36px; font-size:12px; }
+    .saved-keys-empty { color:#a0afbf; font-size:12px; padding:8px 0; }
+    .copy-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); padding:10px 20px; border-radius:999px; background:#1a2733; color:#fff; font-size:13px; font-weight:600; opacity:0; transition:opacity .2s; pointer-events:none; z-index:999; }
+    .copy-toast.show { opacity:1; }
+    footer { margin-top:18px; color:#8493a5; text-align:center; font-size:11px; }
+    /* Hamburger menu — mobile only (≤900px) */
+    .menu-wrap { display:none; }
+    .menu-backdrop { display:none; }
+    @media (max-width:900px) {
+      .shell{width:min(600px,calc(100% - 28px));} header{align-items:flex-start;flex-direction:column;} main{grid-template-columns:1fr;} .header-actions{align-self:flex-start;}
+      .menu-wrap { position:relative; display:block; flex:none; }
+      .hamburger { display:flex; align-items:center; justify-content:center; width:40px; height:40px; flex:none; border:1px solid var(--line); border-radius:10px; background:var(--panel); cursor:pointer; color:#4a5a6c; transition:border-color .15s,color .15s; }
+      .hamburger:hover { border-color:var(--cyan); color:var(--cyan); }
+      .hamburger img { width:20px; height:20px; display:block; }
+      .hamburger.open { border-color:var(--cyan); color:var(--cyan); }
+      .menu-panel { display:none; position:absolute; top:calc(100% + 8px); right:0; min-width:220px; padding:6px; border:1px solid var(--line); border-radius:12px; background:var(--panel); box-shadow:0 12px 32px rgba(30,50,80,.12); z-index:100; }
+      .menu-panel.open { display:block; }
+      .menu-item { display:flex; align-items:center; gap:10px; width:100%; min-height:48px; padding:0 12px; border:none; border-radius:8px; background:transparent; color:var(--text); font-size:14px; font-weight:600; cursor:pointer; text-align:left; }
+      .menu-item:hover { background:var(--soft); }
+      .menu-item.active { background:var(--soft); }
+      .menu-item .menu-mark { display:grid; place-items:center; width:28px; height:28px; border-radius:7px; font-size:11px; font-weight:800; color:#fff; flex:none; }
+      .menu-backdrop.open { display:block; position:fixed; inset:0; z-index:90; background:transparent; }
+      main{display:flex;flex-direction:column;gap:0;} .card{display:none;} .card.active{display:block;animation:fade .18s ease;} @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+    }
+    @media (max-width:480px) { .shell{padding-top:22px;} .card{padding:18px;} .buttons{grid-template-columns:1fr 1fr 1fr;} }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div><p class="eyebrow">Credential Console</p><h1>API key health check</h1><p class="intro">Validate access and inspect available models across your AI providers.</p></div>
+      <div class="header-actions">
+        <div class="privacy">Browser-only · keys stored locally</div>
+        <button class="export-btn" id="exportBtn" title="Download saved keys as JSON">Export</button>
+        <button class="export-btn" id="importBtn" title="Import keys from a JSON file">Import</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <div class="menu-wrap">
+          <button class="hamburger" id="hamburger" aria-label="Switch provider" aria-expanded="false"><img src="img/hamburger.svg" alt="Menu"></button>
+          <div class="menu-panel" id="menuPanel" role="menu">
+            <button class="menu-item active" data-card="or" role="menuitem"><span class="menu-mark" style="background:#7c6cf0">OR</span>OpenRouter</button>
+            <button class="menu-item" data-card="zen" role="menuitem"><span class="menu-mark" style="background:#0ea5a0">Z</span>OpenCode Zen</button>
+            <button class="menu-item" data-card="groq" role="menuitem"><span class="menu-mark" style="background:#e07b2c">G</span>Groq</button>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main>
+      <!-- OpenRouter -->
+      <section class="card active" data-card="or" style="--accent:#7c6cf0" aria-labelledby="or-title">
+        <div class="provider"><div class="mark">OR</div><div><h2 id="or-title">OpenRouter</h2><p>Credits + free model catalog</p></div></div>
+        <label for="apiKey">API key</label><input type="password" id="apiKey" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false">
+        <div class="name-field"><label for="orKeyName">Name (optional)</label><input type="text" id="orKeyName" placeholder="e.g. Work account" autocomplete="off" spellcheck="false"></div>
+        <div class="buttons"><button id="checkBtn">Check key</button><button class="secondary" id="clearBtn">Clear</button><button class="tertiary" id="saveBtn">Save</button></div>
+        <div class="error" id="error" role="alert"></div>
+        <div class="results" id="results" aria-live="polite">
+          <div class="result-row"><span class="result-label">Status</span><span class="result-value" id="status"></span></div>
+          <div class="result-row"><span class="result-label">Remaining credit</span><span class="result-value" id="remaining"></span></div>
+          <div class="result-row"><span class="result-label">Credit limit</span><span class="result-value" id="limit"></span></div>
+          <div class="result-row model-row"><label class="result-label" for="models">Free model</label><select id="models" disabled><option value="">Select a model</option></select></div>
+        </div>
+        <div class="saved-keys">
+          <div class="saved-keys-list" id="orSavedList"></div>
+        </div>
+      </section>
+      <!-- OpenCode Zen -->
+      <section class="card" data-card="zen" style="--accent:#0ea5a0" aria-labelledby="zen-title">
+        <div class="provider"><div class="mark">Z</div><div><h2 id="zen-title">OpenCode Zen</h2><p>Free model catalog</p></div></div>
+        <label for="zenApiKey">API key</label><input type="password" id="zenApiKey" placeholder="sk-..." autocomplete="off" spellcheck="false">
+        <div class="name-field"><label for="zenKeyName">Name (optional)</label><input type="text" id="zenKeyName" placeholder="e.g. Personal" autocomplete="off" spellcheck="false"></div>
+        <div class="buttons"><button id="zenCheckBtn">Check key</button><button class="secondary" id="zenClearBtn">Clear</button><button class="tertiary" id="zenSaveBtn">Save</button></div>
+        <div class="error" id="zenError" role="alert"></div>
+        <div class="results" id="zenResults" aria-live="polite"><div class="result-row"><span class="result-label">Status</span><span class="result-value" id="zenStatus"></span></div><div class="result-row model-row"><label class="result-label" for="zenModels">Free model</label><select id="zenModels" disabled><option value="">Select a model</option></select></div></div>
+        <div class="saved-keys">
+          <div class="saved-keys-list" id="zenSavedList"></div>
+        </div>
+      </section>
+      <!-- Groq -->
+      <section class="card" data-card="groq" style="--accent:#e07b2c" aria-labelledby="groq-title">
+        <div class="provider"><div class="mark">G</div><div><h2 id="groq-title">Groq</h2><p>Active model catalog</p></div></div>
+        <label for="groqApiKey">API key</label><input type="password" id="groqApiKey" placeholder="gsk_..." autocomplete="off" spellcheck="false">
+        <div class="name-field"><label for="groqKeyName">Name (optional)</label><input type="text" id="groqKeyName" placeholder="e.g. Test key" autocomplete="off" spellcheck="false"></div>
+        <div class="buttons"><button id="groqCheckBtn">Check key</button><button class="secondary" id="groqClearBtn">Clear</button><button class="tertiary" id="groqSaveBtn">Save</button></div>
+        <div class="error" id="groqError" role="alert"></div>
+        <div class="results" id="groqResults" aria-live="polite"><div class="result-row"><span class="result-label">Status</span><span class="result-value" id="groqStatus"></span></div><div class="result-row model-row"><label class="result-label" for="groqModels">Active model</label><select id="groqModels" disabled><option value="">Select a model</option></select></div></div>
+        <div class="saved-keys">
+          <div class="saved-keys-list" id="groqSavedList"></div>
+        </div>
+      </section>
+    </main>
+    <footer>Credentials are sent directly to each provider, except Zen requests routed through the required CORS proxy. Saved keys persist in localStorage on this device only.</footer>
+  </div>
+  <div class="menu-backdrop" id="menuBackdrop"></div>
+  <div class="copy-toast" id="copyToast">Copied to clipboard</div>
+  <script>
+    /* ── Mobile hamburger menu ── */
+    (function(){
+      const hamburger=document.getElementById('hamburger'),menu=document.getElementById('menuPanel'),backdrop=document.getElementById('menuBackdrop');
+      const cards=document.querySelectorAll('.card[data-card]'),items=document.querySelectorAll('.menu-item');
+      function closeMenu(){hamburger.classList.remove('open');menu.classList.remove('open');backdrop.classList.remove('open');hamburger.setAttribute('aria-expanded','false');}
+      function openMenu(){hamburger.classList.add('open');menu.classList.add('open');backdrop.classList.add('open');hamburger.setAttribute('aria-expanded','true');}
+      hamburger.addEventListener('click',()=>{menu.classList.contains('open')?closeMenu():openMenu();});
+      backdrop.addEventListener('click',closeMenu);
+      items.forEach(item=>item.addEventListener('click',()=>{
+        const target=item.dataset.card;
+        cards.forEach(c=>c.classList.toggle('active',c.dataset.card===target));
+        items.forEach(i=>i.classList.toggle('active',i===item));
+        closeMenu();
+      }));
+      document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();});
+    })();
+    /* ── Saved-key storage (localStorage) ── */
+    const STORAGE_KEY='apikeychecker_keys';
+    function loadStore(){
+      let s;
+      try{ s=JSON.parse(localStorage.getItem(STORAGE_KEY)); }catch{ s=null; }
+      if(!s) s={openrouter:[],zen:[],groq:[]};
+      let migrated=false;
+      for(const p of ['openrouter','zen','groq']){
+        if(!Array.isArray(s[p])){s[p]=[];migrated=true;continue;}
+        s[p]=s[p].map(x=>{
+          if(typeof x==='string')return{name:'',key:x};
+          if(x&&typeof x==='object'&&typeof x.key==='string')return{name:x.name||'',key:x.key};
+          return null;
+        }).filter(Boolean);
+        migrated=true;
+      }
+      if(migrated) saveStore(s);
+      return s;
+    }
+    function saveStore(s){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}catch(e){console.error('Failed to save keys:',e);}}
+    function truncateKey(k){if(!k||k.length<=8)return (k||'').slice(0,2)+'****';return k.slice(0,4)+'****'+k.slice(-4);}
+    function showToast(msg){const t=document.getElementById('copyToast');t.textContent=msg;t.classList.add('show');clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove('show'),1600);}
+    function copyToClipboard(text){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(()=>showToast('Copied to clipboard')).catch(()=>fallbackCopy(text));}else{fallbackCopy(text);}}
+    function fallbackCopy(text){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');showToast('Copied to clipboard');}catch{showToast('Copy failed');}document.body.removeChild(ta);}
+
+    /* ── Manual export ── */
+    function exportKeys(){
+      const s=loadStore();const total=s.openrouter.length+s.zen.length+s.groq.length;
+      if(!total){showToast('No saved keys to export');return;}
+      const blob=new Blob([JSON.stringify(s,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);const a=document.createElement('a');
+      a.href=url;a.download='api-keys-'+new Date().toISOString().slice(0,10)+'.json';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      URL.revokeObjectURL(url);showToast('Exported '+total+' key'+(total>1?'s':''));
+    }
+    document.getElementById('exportBtn').addEventListener('click',exportKeys);
+
+    /* ── Manual import ── */
+    const importBtn=document.getElementById('importBtn'),importFile=document.getElementById('importFile');
+    importBtn.addEventListener('click',()=>importFile.click());
+    importFile.addEventListener('change',()=>{
+      const file=importFile.files[0];if(!file)return;
+      const reader=new FileReader();
+      reader.onload=()=>{
+        let data;try{data=JSON.parse(reader.result);}catch{showToast('Invalid JSON file');importFile.value='';return;}
+        const listMap={openrouter:document.getElementById('orSavedList'),zen:document.getElementById('zenSavedList'),groq:document.getElementById('groqSavedList')};
+        const inputMap={openrouter:document.getElementById('apiKey'),zen:document.getElementById('zenApiKey'),groq:document.getElementById('groqApiKey')};
+        let added=0,skipped=0;
+        for(const p of ['openrouter','zen','groq']){
+          if(!Array.isArray(data[p]))continue;
+          data[p].forEach(entry=>{
+            if(entry&&typeof entry==='object'&&typeof entry.key==='string'){
+              if(addKey(p,entry.key,entry.name||''))added++;else skipped++;
+            }
+          });
+          if(listMap[p]&&inputMap[p])renderSavedKeys(p,listMap[p],inputMap[p]);
+        }
+        showToast(added?('Imported '+added+' key'+(added>1?'s':'')+(skipped?', '+skipped+' skipped':'')):'No new keys imported');
+        importFile.value='';
+      };
+      reader.onerror=()=>{showToast('Failed to read file');importFile.value='';};
+      reader.readAsText(file);
+    });
+
+    function addKey(provider,key,name){
+      const s=loadStore();key=key.trim();name=(name||'').trim();
+      if(s[provider].some(e=>e.key===key))return false;
+      s[provider].push({name,key});saveStore(s);return true;
+    }
+    function removeKey(provider,idx){const s=loadStore();s[provider].splice(idx,1);saveStore(s);}
+    function renderSavedKeys(provider,listEl,inputEl){
+      const s=loadStore();const keys=s[provider];
+      listEl.innerHTML='';
+      if(!keys.length){listEl.innerHTML='<div class="saved-keys-empty">No saved keys yet</div>';return;}
+      keys.forEach((entry,idx)=>{
+        const row=document.createElement('div');row.className='saved-key-row';
+        const info=document.createElement('div');info.className='key-info';
+        const nameEl=document.createElement('span');nameEl.className='key-name';nameEl.textContent=entry.name||'(unnamed)';
+        const truncEl=document.createElement('span');truncEl.className='key-trunc';truncEl.textContent=truncateKey(entry.key);
+        info.append(nameEl,truncEl);
+        const useBtn=document.createElement('button');useBtn.className='use-btn';useBtn.textContent='Use';useBtn.title='Load into API key field';useBtn.addEventListener('click',()=>{inputEl.value=entry.key;inputEl.focus();showToast('Key loaded');});
+        const copyBtn=document.createElement('button');copyBtn.className='copy-btn';copyBtn.textContent='Copy';copyBtn.addEventListener('click',()=>copyToClipboard(entry.key));
+        const delBtn=document.createElement('button');delBtn.className='del-btn';delBtn.textContent='×';delBtn.title='Delete';delBtn.addEventListener('click',()=>{removeKey(provider,idx);renderSavedKeys(provider,listEl,inputEl);});
+        row.append(info,useBtn,copyBtn,delBtn);listEl.appendChild(row);
+      });
+    }
+
+    /* ── OpenRouter ── */
+    const apiKeyInput=document.getElementById('apiKey'),checkBtn=document.getElementById('checkBtn'),clearBtn=document.getElementById('clearBtn'),saveBtn=document.getElementById('saveBtn'),orNameInput=document.getElementById('orKeyName'),error=document.getElementById('error'),results=document.getElementById('results'),statusEl=document.getElementById('status'),remainingEl=document.getElementById('remaining'),limitEl=document.getElementById('limit'),models=document.getElementById('models'),orList=document.getElementById('orSavedList');
+    checkBtn.addEventListener('click',checkKey);apiKeyInput.addEventListener('keydown',e=>{if(e.key==='Enter')checkKey();});
+    clearBtn.addEventListener('click',()=>{apiKeyInput.value='';orNameInput.value='';error.classList.remove('show');results.classList.remove('show');statusEl.textContent='';remainingEl.textContent='';limitEl.textContent='';models.innerHTML='<option value="">Select a model</option>';models.disabled=true;apiKeyInput.focus();});
+    saveBtn.addEventListener('click',()=>{const k=apiKeyInput.value.trim();if(!k){showToast('Enter a key first');return;}if(!/^sk-or-v1-[a-zA-Z0-9_-]+$/.test(k)){error.textContent='Invalid key format. Key should start with sk-or-v1-';error.classList.add('show');return;}const added=addKey('openrouter',k,orNameInput.value);renderSavedKeys('openrouter',orList,apiKeyInput);showToast(added?'Key saved':'Key already saved');});
+    async function checkKey(){const apiKey=apiKeyInput.value.trim();if(!apiKey)return;if(!/^sk-or-v1-[a-zA-Z0-9_-]+$/.test(apiKey)){error.textContent='Invalid key format. Key should start with sk-or-v1-';error.classList.add('show');return;}checkBtn.disabled=true;checkBtn.textContent='Checking...';error.classList.remove('show');results.classList.remove('show');try{const res=await fetch('https://openrouter.ai/api/v1/auth/key',{headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'}});if(!res.ok)throw new Error(res.status===401?'Invalid API key':`HTTP ${res.status}`);const data=await res.json();statusEl.textContent='Valid';statusEl.className='result-value status-valid';remainingEl.textContent=`$${data.credits?.toFixed(2)||'0.00'}`;limitEl.textContent=data.limit?`$${data.limit.toFixed(2)}`:'N/A';results.classList.add('show');fetchModels(apiKey);}catch(e){error.textContent=e.message;error.classList.add('show');statusEl.textContent='Invalid';statusEl.className='result-value status-invalid';results.classList.add('show');remainingEl.textContent='N/A';limitEl.textContent='N/A';}finally{checkBtn.disabled=false;checkBtn.textContent='Check key';}}
+    async function fetchModels(apiKey){models.innerHTML='<option value="">Loading models...</option>';models.disabled=true;try{const res=await fetch('https://openrouter.ai/api/v1/models',{headers:{'Authorization':`Bearer ${apiKey}`}});if(!res.ok)throw new Error('Failed to fetch models');const data=await res.json();models.innerHTML='';data.data?.filter(model=>model.pricing?.prompt==="0"&&model.pricing?.completion==="0").forEach(model=>{const opt=document.createElement('option');opt.value=model.id;opt.textContent=model.id;models.appendChild(opt);});if(!models.options.length)models.innerHTML='<option value="">No free models available</option>';models.disabled=false;}catch{models.innerHTML='<option value="">Failed to load models</option>';}}
+    renderSavedKeys('openrouter',orList,apiKeyInput);
+
+    /* ── OpenCode Zen ── */
+    const zenApiKeyInput=document.getElementById('zenApiKey'),zenCheckBtn=document.getElementById('zenCheckBtn'),zenClearBtn=document.getElementById('zenClearBtn'),zenSaveBtn=document.getElementById('zenSaveBtn'),zenNameInput=document.getElementById('zenKeyName'),zenError=document.getElementById('zenError'),zenResults=document.getElementById('zenResults'),zenStatusEl=document.getElementById('zenStatus'),zenModelsEl=document.getElementById('zenModels'),zenList=document.getElementById('zenSavedList');
+    zenCheckBtn.addEventListener('click',checkZenKey);zenApiKeyInput.addEventListener('keydown',e=>{if(e.key==='Enter')checkZenKey();});
+    zenClearBtn.addEventListener('click',()=>{zenApiKeyInput.value='';zenNameInput.value='';zenError.classList.remove('show');zenResults.classList.remove('show');zenStatusEl.textContent='';zenModelsEl.innerHTML='<option value="">Select a model</option>';zenModelsEl.disabled=true;zenApiKeyInput.focus();});
+    zenSaveBtn.addEventListener('click',()=>{const k=zenApiKeyInput.value.trim();if(!k){showToast('Enter a key first');return;}if(!/^sk-(?!or-v1-)[a-zA-Z0-9_-]{10,}$/.test(k)){zenError.textContent='Invalid key format. Key should start with sk-';zenError.classList.add('show');return;}const added=addKey('zen',k,zenNameInput.value);renderSavedKeys('zen',zenList,zenApiKeyInput);showToast(added?'Key saved':'Key already saved');});
+    async function checkZenKey(){const apiKey=zenApiKeyInput.value.trim();if(!apiKey)return;if(!/^sk-(?!or-v1-)[a-zA-Z0-9_-]{10,}$/.test(apiKey)){zenError.textContent='Invalid key format. Key should start with sk-';zenError.classList.add('show');return;}zenCheckBtn.disabled=true;zenCheckBtn.textContent='Checking...';zenError.classList.remove('show');zenResults.classList.remove('show');try{const res=await fetch('https://api.cors.syrins.tech/?url='+encodeURIComponent('https://opencode.ai/zen/v1/models'),{headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'}});if(!res.ok)throw new Error(res.status===401?'Invalid API key':`HTTP ${res.status}`);const data=await res.json();zenStatusEl.textContent='Valid';zenStatusEl.className='result-value status-valid';zenResults.classList.add('show');zenModelsEl.innerHTML='';data.data?.filter(model=>model.id.includes('-free')||model.id==='big-pickle').forEach(model=>{const opt=document.createElement('option');opt.value=model.id;opt.textContent=model.id;zenModelsEl.appendChild(opt);});if(!zenModelsEl.options.length)zenModelsEl.innerHTML='<option value="">No free models available</option>';zenModelsEl.disabled=false;}catch(e){zenError.textContent=e.message;zenError.classList.add('show');zenStatusEl.textContent='Invalid';zenStatusEl.className='result-value status-invalid';zenModelsEl.innerHTML='<option value="">Select a model</option>';zenModelsEl.disabled=true;zenResults.classList.add('show');}finally{zenCheckBtn.disabled=false;zenCheckBtn.textContent='Check key';}}
+    renderSavedKeys('zen',zenList,zenApiKeyInput);
+
+    /* ── Groq ── */
+    const groqApiKeyInput=document.getElementById('groqApiKey'),groqCheckBtn=document.getElementById('groqCheckBtn'),groqClearBtn=document.getElementById('groqClearBtn'),groqSaveBtn=document.getElementById('groqSaveBtn'),groqNameInput=document.getElementById('groqKeyName'),groqError=document.getElementById('groqError'),groqResults=document.getElementById('groqResults'),groqStatusEl=document.getElementById('groqStatus'),groqModelsEl=document.getElementById('groqModels'),groqList=document.getElementById('groqSavedList');
+    groqCheckBtn.addEventListener('click',checkGroqKey);groqApiKeyInput.addEventListener('keydown',e=>{if(e.key==='Enter')checkGroqKey();});
+    groqClearBtn.addEventListener('click',()=>{groqApiKeyInput.value='';groqNameInput.value='';groqError.classList.remove('show');groqResults.classList.remove('show');groqStatusEl.textContent='';groqModelsEl.innerHTML='<option value="">Select a model</option>';groqModelsEl.disabled=true;groqApiKeyInput.focus();});
+    groqSaveBtn.addEventListener('click',()=>{const k=groqApiKeyInput.value.trim();if(!k){showToast('Enter a key first');return;}if(!/^gsk_[a-zA-Z0-9_-]+$/.test(k)){groqError.textContent='Invalid key format. Key should start with gsk_';groqError.classList.add('show');return;}const added=addKey('groq',k,groqNameInput.value);renderSavedKeys('groq',groqList,groqApiKeyInput);showToast(added?'Key saved':'Key already saved');});
+    async function checkGroqKey(){const apiKey=groqApiKeyInput.value.trim();if(!apiKey)return;if(!/^gsk_[a-zA-Z0-9_-]+$/.test(apiKey)){groqError.textContent='Invalid key format. Key should start with gsk_';groqError.classList.add('show');return;}groqCheckBtn.disabled=true;groqCheckBtn.textContent='Checking...';groqError.classList.remove('show');groqResults.classList.remove('show');try{const res=await fetch('https://api.groq.com/openai/v1/models',{headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'}});if(!res.ok)throw new Error(res.status===401?'Invalid API key':`HTTP ${res.status}`);const data=await res.json();groqStatusEl.textContent='Valid';groqStatusEl.className='result-value status-valid';groqResults.classList.add('show');groqModelsEl.innerHTML='';data.data?.filter(model=>model.active!==false).forEach(model=>{const opt=document.createElement('option');opt.value=model.id;opt.textContent=model.id;groqModelsEl.appendChild(opt);});if(!groqModelsEl.options.length)groqModelsEl.innerHTML='<option value="">No free models available</option>';groqModelsEl.disabled=false;}catch(e){groqError.textContent=e.message;groqError.classList.add('show');groqStatusEl.textContent='Invalid';groqStatusEl.className='result-value status-invalid';groqModelsEl.innerHTML='<option value="">Select a model</option>';groqModelsEl.disabled=true;groqResults.classList.add('show');}finally{groqCheckBtn.disabled=false;groqCheckBtn.textContent='Check key';}}
+    renderSavedKeys('groq',groqList,groqApiKeyInput);
+  </script>
+</body>
+</html>
